@@ -25,7 +25,7 @@
 #define TIMER0_CTC_TOP 156   // 10ms
 #define TIMER1_CTC_TOP 31250 // 2s
 
-uint16_t umbral;
+uint16_t threshold;
 uint8_t enable = 1;
 volatile uint16_t count = 50;
 volatile uint8_t transistor = Q1;
@@ -67,7 +67,7 @@ int main(void) {
             count = 50;
     } while ((PIND & (1 << P2)));
 
-    umbral = count;
+    threshold = count;
     count = 0;
 
     while (1) {
@@ -92,9 +92,7 @@ int main(void) {
             _delay_ms(BOUNCE_DELAY);
             if (!(PIND & (1 << P3)))
                 count += 1;
-        }
-        if ((count >= umbral) && !(PIND & (1 << ALARMA))) {
-            // activar alarma por 10 segundos
+        if ((count >= threshold) && !(PIND & (1 << ALARMA))) {
             PORTD |= (1 << ALARMA);
             TCCR1B |=
                 (1 << CS12) | (1 << CS10); // Prescaler 1024. Inicia el conteo
