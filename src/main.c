@@ -1,29 +1,21 @@
-// Pines
-// Pulsador 1: PD0
-// Pulsador 2: PD1
-// Pulsador 3: PD2
-// Alarma: PD7
-// Transistor Q1: PC0
-// Transistor Q2: PC1
-// Transistor Q3: PC2
-// Display: PB0-PB3
-
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <util/delay.h>
 
-#define P1 PORTD0
-#define P2 PORTD1
-#define P3 PORTD2
-#define ENABLE PORTD6
-#define ALARMA PORTD7
-#define Q1 PORTC0
-#define Q2 PORTC1
-#define Q3 PORTC2
+// Pines
+// Decodificador BCD a 7-seg: PB0-PB3
+#define P1 PORTD0     // Pulsador 1
+#define P2 PORTD1     // Pulsador 2
+#define P3 PORTD2     // Pulsador 3
+#define ENABLE PORTD6 // LED Indicador de Conteo Habilitado
+#define ALARMA PORTD7 // Alarma (Transistor Q4)
+#define Q1 PORTC0     // Transistor Q1
+#define Q2 PORTC1     // Transistor Q2
+#define Q3 PORTC2     // Transistor Q3
 
 #define BOUNCE_DELAY 10
-#define TIMER0_CTC_TOP 156   // 10ms
-#define TIMER1_CTC_TOP 31250 // 2s
+#define TIMER0_CTC_TOP 156   // * 1024 * (1/16MHz) = 9.984ms ~= 10ms
+#define TIMER1_CTC_TOP 31250 // * 1024 * (1/16MHz) = 2s
 
 uint16_t threshold;
 uint8_t enable = 1;
@@ -39,12 +31,13 @@ uint8_t P3State;
 uint8_t lastP3State = 1;
 
 int main(void) {
-    DDRD = (1 << ALARMA) | (1 << ENABLE); // Puerto D: Pulsadores (entrada),
-    // alarma y led inidador de enable (salida)
-    PORTD =
-        (1 << P1) | (1 << P2) | (1 << P3) | (1 << ENABLE); // Pull-ups internos
-    DDRC = 0xFF; // Puerto C: Transistores (modo salida)
-    DDRB = 0xFF; // Puerto B: Displays (modo salida)
+    DDRD =
+        (1 << ALARMA) | (1 << ENABLE); // Puerto D: Pulsadores (entrada), alarma
+                                       // y led inidador de enable (salida)
+    PORTD = (1 << P1) | (1 << P2) | (1 << P3) |
+            (1 << ENABLE); // Pull-ups internos. Enable en alto por defecto
+    DDRC = 0xFF;           // Puerto C: Transistores (modo salida)
+    DDRB = 0xFF;           // Puerto B: Displays (modo salida)
 
     // Timer 0: Multiplexado de Displays
     TCCR0A = (1 << WGM01); // Modo CTC
@@ -67,11 +60,11 @@ int main(void) {
         P1State = (PIND & (1 << P1));
         if (P1State != lastP1State) { // cambió estado del botón
             if (!P1State) {           // botón pasó de alto a bajo
-            _delay_ms(BOUNCE_DELAY);
+                _delay_ms(BOUNCE_DELAY);
                 if (!(PIND & (1 << P1))) { // botón sigue en bajo tras retardo
-                count += 1;
+                    count += 1;
                     if (count > 400)
-            count = 50;
+                        count = 50;
                 }
             }
         }
@@ -101,10 +94,10 @@ int main(void) {
         P1State = (PIND & (1 << P1));
         if (P1State != lastP1State) {
             if (!P1State) {
-            _delay_ms(BOUNCE_DELAY);
-            if (!(PIND & (1 << P1)))
-                count = 0;
-        }
+                _delay_ms(BOUNCE_DELAY);
+                if (!(PIND & (1 << P1)))
+                    count = 0;
+            }
         }
         lastP1State = P1State;
 
@@ -112,10 +105,10 @@ int main(void) {
         if (P2State != lastP2State) {
             if (!P2State) {
                 _delay_ms(BOUNCE_DELAY);
-        if (!(PIND & (1 << P2))) {
-                enable ^= 1;
-            PORTD ^= (1 << ENABLE);
-        }
+                if (!(PIND & (1 << P2))) {
+                    enable ^= 1;
+                    PORTD ^= (1 << ENABLE);
+                }
             }
         }
         lastP2State = P2State;
@@ -123,9 +116,9 @@ int main(void) {
         P3State = (PIND & (1 << P3));
         if (P3State != lastP3State) {
             if (!P3State) {
-            _delay_ms(BOUNCE_DELAY);
+                _delay_ms(BOUNCE_DELAY);
                 if (!(PIND & (1 << P3))) {
-                count += 1;
+                    count += 1;
                     if (count > 999)
                         count = 0;
                 }
@@ -153,12 +146,14 @@ ISR(TIMER0_COMPA_vect) {
         PORTC = (1 << Q2);         // se enciende el display de las decenas
         transistor = Q2;
         break;
+
     case Q2: // se está mostrando el display de las decenas
         PORTC = 0x00;
         PORTB = count / 100;
         PORTC = (1 << Q3);
         transistor = Q3;
         break;
+
     case Q3: // se está mostrando el display de las centenas
         PORTC = 0x00;
         PORTB = count % 10;
@@ -171,10 +166,8 @@ ISR(TIMER0_COMPA_vect) {
 ISR(TIMER1_COMPA_vect) {
     timer1_counter++;
     if (timer1_counter >= 5) {
-        PORTD &= ~(1 << ALARMA);
-        TCCR1B &= ~(1 << CS12) & ~(1 << CS11) &
-                  ~(1 << CS10); // Limpia prescaler. Detiene conteo
-        TCNT1 = 0x0000;         // Limpia contador
+        PORTD &= ~(1 << ALARMA);               // Apaga alarma
+        TCCR1B &= ~(1 << CS12) & ~(1 << CS10); // Detiene conteo
         timer1_counter = 0;
     }
 }
