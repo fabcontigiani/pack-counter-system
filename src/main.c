@@ -27,9 +27,16 @@
 
 uint16_t threshold;
 uint8_t enable = 1;
+uint8_t flag = 1;
 volatile uint16_t count = 50;
 volatile uint8_t transistor = Q1;
 volatile uint8_t timer1_counter = 0;
+uint8_t P1State;
+uint8_t lastP1State = 1;
+uint8_t P2State;
+uint8_t lastP2State = 1;
+uint8_t P3State;
+uint8_t lastP3State = 1;
 
 int main(void) {
     DDRD = (1 << ALARMA) | (1 << ENABLE); // Puerto D: Pulsadores (entrada),
@@ -57,15 +64,29 @@ int main(void) {
     // P3: No tiene efecto.
     // Display: Muestra el incremento del umbral.
     do {
-        if (!(PIND & (1 << P1))) {
+        P1State = (PIND & (1 << P1));
+        if (P1State != lastP1State) { // cambió estado del botón
+            if (!P1State) {           // botón pasó de alto a bajo
             _delay_ms(BOUNCE_DELAY);
-            if (!(PIND & (1 << P1))) {
+                if (!(PIND & (1 << P1))) { // botón sigue en bajo tras retardo
                 count += 1;
+                    if (count > 400)
+            count = 50;
+                }
             }
         }
-        if (count > 400)
-            count = 50;
-    } while ((PIND & (1 << P2)));
+        lastP1State = P1State;
+
+        P2State = (PIND & (1 << P2));
+        if (P2State != lastP2State) {
+            if (!P2State) {
+                _delay_ms(BOUNCE_DELAY);
+                if (!(PIND & (1 << P2)))
+                    flag = 0;
+            }
+        }
+        lastP2State = P2State;
+    } while (flag);
 
     threshold = count;
     count = 0;
@@ -77,28 +98,48 @@ int main(void) {
         // P3: Incrementa conteo (simula detector de packs).
         // Display: Indica la cantidad de packs contados (no resetea al llegar
         // al umbral).
-        if (!(PIND & (1 << P1))) {
+        P1State = (PIND & (1 << P1));
+        if (P1State != lastP1State) {
+            if (!P1State) {
             _delay_ms(BOUNCE_DELAY);
             if (!(PIND & (1 << P1)))
                 count = 0;
         }
+        }
+        lastP1State = P1State;
+
+        P2State = (PIND & (1 << P2));
+        if (P2State != lastP2State) {
+            if (!P2State) {
+                _delay_ms(BOUNCE_DELAY);
         if (!(PIND & (1 << P2))) {
-            _delay_ms(BOUNCE_DELAY);
-            if (!(PIND & (1 << P2)))
                 enable ^= 1;
             PORTD ^= (1 << ENABLE);
         }
-        if (!(PIND & (1 << P3)) && enable) {
+            }
+        }
+        lastP2State = P2State;
+
+        P3State = (PIND & (1 << P3));
+        if (P3State != lastP3State) {
+            if (!P3State) {
             _delay_ms(BOUNCE_DELAY);
-            if (!(PIND & (1 << P3)))
+                if (!(PIND & (1 << P3))) {
                 count += 1;
+                    if (count > 999)
+                        count = 0;
+                }
+            }
+        }
+        lastP3State = P3State;
+
         if ((count >= threshold) && !(PIND & (1 << ALARMA))) {
+            // si contador por encima de umbral y alarma no está encendida
+            // encender alarma por 10 segundos
             PORTD |= (1 << ALARMA);
             TCCR1B |=
                 (1 << CS12) | (1 << CS10); // Prescaler 1024. Inicia el conteo
         }
-        if (count > 999)
-            count = 0;
     }
 
     return 0;
