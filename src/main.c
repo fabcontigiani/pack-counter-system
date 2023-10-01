@@ -114,7 +114,7 @@ int main(void) {
         lastP2State = P2State;
 
         P3State = (PIND & (1 << P3));
-        if (P3State != lastP3State) {
+        if ((P3State != lastP3State) && enable) {
             if (!P3State) {
                 _delay_ms(BOUNCE_DELAY);
                 if (!(PIND & (1 << P3))) {
