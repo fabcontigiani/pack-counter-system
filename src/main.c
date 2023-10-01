@@ -141,23 +141,23 @@ int main(void) {
 ISR(TIMER0_COMPA_vect) {
     switch (transistor) {
     case Q1:          // se está mostrando el display de las unidades
-        PORTC = 0x00; // se apagan los displays
+        PORTC = 0xFF; // se apagan los displays
         PORTB = (count / 10) % 10; // se escribe en el puerto
-        PORTC = (1 << Q2);         // se enciende el display de las decenas
+        PORTC = ~(1 << Q2);        // se enciende el display de las decenas
         transistor = Q2;
         break;
 
     case Q2: // se está mostrando el display de las decenas
-        PORTC = 0x00;
+        PORTC = 0xFF;
         PORTB = count / 100;
-        PORTC = (1 << Q3);
+        PORTC = ~(1 << Q3);
         transistor = Q3;
         break;
 
     case Q3: // se está mostrando el display de las centenas
-        PORTC = 0x00;
+        PORTC = 0xFF;
         PORTB = count % 10;
-        PORTC = (1 << Q1);
+        PORTC = ~(1 << Q1);
         transistor = Q1;
         break;
     }
