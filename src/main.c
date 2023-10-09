@@ -8,7 +8,7 @@
 #define P2 PORTD1     // Pulsador 2
 #define P3 PORTD2     // Pulsador 3
 #define ENABLE PORTD6 // LED Indicador de Conteo Habilitado
-#define ALARMA PORTD7 // Alarma (Transistor Q4)
+#define ALARM PORTD7 // Alarma (Transistor Q4)
 #define Q1 PORTC0     // Transistor Q1
 #define Q2 PORTC1     // Transistor Q2
 #define Q3 PORTC2     // Transistor Q3
@@ -32,7 +32,7 @@ uint8_t lastP3State = 1;
 
 int main(void) {
     DDRD =
-        (1 << ALARMA) | (1 << ENABLE); // Puerto D: Pulsadores (entrada), alarma
+        (1 << ALARM) | (1 << ENABLE); // Puerto D: Pulsadores (entrada), alarma
                                        // y led inidador de enable (salida)
     PORTD = (1 << P1) | (1 << P2) | (1 << P3) |
             (1 << ENABLE); // Pull-ups internos. Enable en alto por defecto
@@ -126,10 +126,10 @@ int main(void) {
         }
         lastP3State = P3State;
 
-        if ((count >= threshold) && !(PIND & (1 << ALARMA))) {
+        if ((count >= threshold) && !(PIND & (1 << ALARM))) {
             // si contador por encima de umbral y alarma no está encendida
             // encender alarma por 10 segundos
-            PORTD |= (1 << ALARMA);
+            PORTD |= (1 << ALARM);
             TCCR1B |=
                 (1 << CS12) | (1 << CS10); // Prescaler 1024. Inicia el conteo
         }
@@ -166,7 +166,7 @@ ISR(TIMER0_COMPA_vect) {
 ISR(TIMER1_COMPA_vect) {
     timer1_counter++;
     if (timer1_counter >= 5) {
-        PORTD &= ~(1 << ALARMA);               // Apaga alarma
+        PORTD &= ~(1 << ALARM);               // Apaga alarma
         TCCR1B &= ~(1 << CS12) & ~(1 << CS10); // Detiene conteo
         timer1_counter = 0;
     }
